@@ -4,7 +4,7 @@
  * Defines HTTP response status codes.
  */
 
-$status_codes = array(
+$export = array(
 	200	=> 'OK',
 	201	=> 'Created',
 	202	=> 'Accepted',

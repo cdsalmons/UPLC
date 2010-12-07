@@ -6,8 +6,7 @@ class Files_library {
 	 * Constructor
 	 */
 	public function __construct() {
-		require UPL_BASEPATH.'mimes.php';
-		$this->mimes = $mimes;
+		$this->mimes = import_resource('mimes');
 	}
 
 	/**
@@ -39,6 +38,29 @@ class Files_library {
 	 */
 	public function write($file, $contents) {
 		return @file_put_contents($file, $contents);
+	}
+	
+	/**
+	 * Reads a "stored" value from a file
+	 *
+	 * @access  public
+	 * @param   string    the file
+	 * @return  mixed
+	 */
+	public function read_object($file) {
+		return unserialize($this->read($file));
+	}
+	
+	/**
+	 * Stores an object in a file
+	 *
+	 * @access  public
+	 * @param   string    the file
+	 * @param   mixed     the object to store
+	 * @return  void
+	 */
+	public function write_object($file, $obj) {
+		return $this->write($file, serialize($obj));
 	}
 	
 	/**

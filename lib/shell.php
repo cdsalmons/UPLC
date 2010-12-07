@@ -53,11 +53,4 @@ class Shell_library {
 
 }
 
-/**
- * Initialize the class
- */
-	function &Shell() {
-		return Shell_library::get_instance();
-	}
-
 /* End of file shell.php */

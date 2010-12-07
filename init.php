@@ -4,6 +4,9 @@
  * Loads the UPLC (Ultimate Php Libraries Collection)
  */
 
+// Set the error reporting
+error_reporting(E_ALL|E_STRICT);
+
 // The UPLC directories
 define('UPLC_BASEPATH', dirname(__FILE__).'/');
 define('UPLC_LIBPATH', UPLC_BASEPATH.'lib/');
@@ -34,6 +37,14 @@ function import_library($lib) {
 	}
 }
 
+// Imports multiple UPLC libraries in one call
+function import_libs() {
+	$libs = func_get_args();
+	foreach ($libs as $lib) {
+		import_library($lib);
+	}
+}
+
 // Imports a UPLC resource file
 function import_resource($file) {
 	$file = UPLC_RESPATH.$file.'.php';
@@ -42,9 +53,9 @@ function import_resource($file) {
 		if (isset($export)) {
 			return $export;
 		}
-		trigger_error(UPLC_RESPATH.$file.'.php is not a valid resource file');
+		trigger_error($file.' is not a valid resource file');
 	}
-	trigger_error('Resource file '.UPLC_RESPATH.$file.'.php does not exist');
+	trigger_error('Resource file '.$file.' does not exist');
 }
 
 /* End of file init.php */

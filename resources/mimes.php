@@ -4,7 +4,7 @@
  * This file contains an array of mime types.
  */
 
-$mimes = array(
+$export = array(
 	'hqx'	=>	'application/mac-binhex40',
 	'cpt'	=>	'application/mac-compactpro',
 	'csv'	=>	'text/x-comma-separated-values',

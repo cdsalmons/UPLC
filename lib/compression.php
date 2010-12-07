@@ -1,9 +1,12 @@
 <?php
 
+define('COMPRESS_GZIP', 1); // == FORCE_GZIP
+define('COMPRESS_ZLIB', 2); // == FORCE_DEFLATE
+
 class Compression_library {
 	
-	const GZIP = FORCE_GZIP;
-	const DEFLATE = FORCE_DEFLATE;
+	const GZIP = COMPRESS_GZIP;
+	const ZLIB = COMPRESS_ZLIB;
 	
 	/**
 	 * Constructor
@@ -12,8 +15,19 @@ class Compression_library {
 	 * @return  void
 	 */
 	public function __construct() {
-		$this->method = $this->determine_method();
+		
 	}
+	
+	/**
+	 * File extensions for compressed files
+	 *
+	 * @access  protected
+	 * @type    array
+	 */
+	protected $file_extensions = array(
+		self::GZIP => '.gz',
+		self::ZLIB => '.zlib'
+	);
 	
 	/**
 	 * Sets the content encoding header
@@ -32,7 +46,7 @@ class Compression_library {
 	 *
 	 * @access  public
 	 * @param   string    the content to compress
-	 * @return  void
+	 * @return  string
 	 */
 	public function compress($content, $compression_level = 9, $method = self::GZIP) {
 		return gzencode($content, 9, $method);
@@ -46,14 +60,22 @@ class Compression_library {
 	 * @param   string    the output file
 	 * @param   int       the compression level
 	 * @param   int       the compression method
-	 * @return  mixed
+	 * @return  string or FALSE
 	 */
-	public function compress_file($input_file, $output_file = null, 
+	public function compress_file($input_file, $output_file = null, $compression_level = 9, $method = self::GZIP) {
+		import_library('files');
+		$should_return = ($output_file === true);
+		if (! $output_file) {
+			$output_file = $input_file.$this->file_extensions[$method];
+		}
+		if ($content = Files()->read($input_file)) {
+			$content = $this->compress($content, $compression_level, $method);
+			if ($should_return) return $content;
+			return ((Files()->write($output_file, $content)) ? $output_file : false);
+		}
+		return false;
+	}
 	
-}
-
-function &Compression() {
-	return Compression_library::get_instance();
 }
 
 /* End of file compression.php */

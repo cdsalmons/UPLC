@@ -263,8 +263,4 @@ class Image_library {
 
 }
 
-function &Img() {
-	return Image_library::get_instance();
-}
-
 /* End of file images.php */
