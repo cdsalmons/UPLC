@@ -12,23 +12,6 @@ define('IMGLIB_GD', 2);
  * @parent  void
  */
 class Image_library {
-	
-	/**
-	 * Instance Control
-	 */
-	protected static $instance = null;
-	
-	/**
-	 * Returns the stored instance
-	 *
-	 * @static
-	 * @access  public
-	 * @return  &Output_library
-	 */
-	public static function &get_instance() {
-		if (! self::$instance) new self;
-		return self::$instance;
-	}
 
 	/**
 	 * Constructor
@@ -37,7 +20,7 @@ class Image_library {
 	 * @return  void
 	 */
 	public function __construct() {
-		self::$instance =& $this;
+		import_libs('shell', 'files');
 		$this->img_lib = $this->determine_library();
 		$this->pngcrush = Shell()->command_exists('pngcrush');
 	}
@@ -69,53 +52,12 @@ class Image_library {
 	 * @return  int
 	 */
 	public function determine_library() {
-		load_class('shell');
 		if (Shell()->command_exists('convert')) {
 			return IMGLIB_IMAGEMAGICK;
 		} else if (function_exists('imagecreatetruecolor')) {
 			return IMGLIB_GD;
 		} else {
 			return IMGLIB_NONE;
-		}
-	}
-	
-	/**
-	 * Generates an RGBA pixel and stores it to a file
-	 *
-	 * @access  public
-	 * @param   string    the color
-	 * @param   string    the output file path
-	 * @return  void
-	 */
-	public function rgba_pixel($color, $output_file) {
-		switch ($this->img_lib) {
-			// ImageMagick
-			case IMGLIB_IMAGEMAGICK:
-				$cmd = 'convert -size 1x1 xc:"rgba('.$color.')" '.$file;
-				Shell()->run_command($cmd);
-			break;
-			// GD
-			case IMGLIB_GD:
-				// Calculate the color
-				$fill = explode(',', $color);
-				$alpha = 127 - (127 * $fill[3]);
-				// Create the image
-				$img = imagecreatetruecolor(1, 1);
-				$fill = imagecolorallocatealpha($img, $fill[0], $fill[1], $fill[2], $alpha);
-				imagefill($img, 0, 0, $fill);
-				imagealphablending($img, false);
-				imagesavealpha($img, true);
-				// Store the image in a file
-				ob_start();
-				imagepng($img);
-				$content = ob_get_contents();
-				ob_end();
-				Files()->write($output_file, $content);
-			break;
-			// Non-support
-			case IMGLIB_NONE:
-				$this->no_engine_found();
-			break;
 		}
 	}
 	
@@ -227,6 +169,8 @@ class Image_library {
 		imagecopyresampled($image_c, $new_image, 0, 0, 0, 0, $new_width, $new_height, $info[0], $info[1]);
 		// Store the new image
 		$funcs->save($image_c, $output_file);
+		// Free up memory
+		imagedestroy($image_c);
 	}
 	
 	/**

@@ -58,6 +58,14 @@ class Input_library {
 	protected $files_data = null;
 	
 	/**
+	 * The COOKIE data
+	 *
+	 * @access  protected
+	 * @type    array
+	 */
+	protected $cookie_data = null;
+	
+	/**
 	 * The request headers
 	 *
 	 * @access  protected
@@ -137,6 +145,17 @@ class Input_library {
 	 */
 	public function files($item = null) {
 		return $this->read_data('files', $item);
+	}
+	
+	/**
+	 * Read a COOKIE variable
+	 *
+	 * @access  public
+	 * @param   string    the variable to read
+	 * @return  mixed
+	 */
+	public function cookie($item = null) {
+		return $this->read_data('cookie', $item);
 	}
 	
 	/**
