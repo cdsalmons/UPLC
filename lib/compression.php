@@ -49,7 +49,9 @@ class Compression_library {
 	 * @return  string
 	 */
 	public function compress($content, $compression_level = 9, $method = self::GZIP) {
-		return gzencode($content, 9, $method);
+		if (function_exists('gzencode')) {
+			return gzencode($content, 9, $method);
+		}
 	}
 	
 	/**

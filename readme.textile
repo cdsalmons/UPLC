@@ -6,6 +6,11 @@ Version: 1.0.1-rc
 Copyright 2010 James Brumond
 Dual licensed under MIT and GPL
 
+h2. Dependencies
+
+* PHP >= 5.3
+* Images needs ImageMagick or PHP GD
+
 h2. What is it?
 
 The UPLC is exactly what its name implies: a big collection of PHP libraries. At the moment, it includes the following libraries:

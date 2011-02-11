@@ -126,6 +126,27 @@ class Input_library {
 	}
 	
 	/**
+	 * Read a REQUEST variable, giving preference to POST
+	 *
+	 * @access  public
+	 * @param   string    the variable to read
+	 * @return  mixed
+	 */
+	public function request($item = null) {
+		if ($item) {
+			$result = $this->post($item);
+			if (! $result) {
+				$result = $this->get($item);
+			}
+		} else {
+			$result = array_merge(
+				$this->get(), $this->post()
+			);
+		}
+		return $result;
+	}
+	
+	/**
 	 * Read a SERVER variable
 	 *
 	 * @access  public

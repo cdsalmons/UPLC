@@ -80,15 +80,66 @@ class Output_library {
 	}
 	
 	/**
-	 * Outputs a variable to the client as HTML safe
+	 * The processor functions
+	 *
+	 * @access  protected
+	 * @type    array
+	 */
+	protected $processors = array();
+	
+	/**
+	 * Processes a string with the requested functions
 	 *
 	 * @access  public
-	 * @param   mixed     the variable to output
+	 * @param   mixed     the string
 	 * @return  void
 	 */
-	public function htmlspecialchars($str) {
+	public function process($str) {
 		$str = (string) $str;
-		$str = htmlspecialchars($str);
+		foreach ($this->processors as $processor => $active) {
+			if ($active) {
+				$str = (string) $processor($str);
+			}
+		}
+		return $str;
+	}
+	
+	/**
+	 * Adds/removes/checks a processor function in the list
+	 *
+	 * @access  public
+	 * @param   string    the function
+	 * @param   bool      what to do
+	 * @return  bool
+	 */
+	public function processor($func, $active = null) {
+		if (isset($this->processors[$func])) {
+			$this->processors[$func] = false;
+		}
+		if ($active !== null) {
+			$this->processors[$func] = (bool) $active;
+		}
+		return $this->processors[$func];
+	}
+	
+	/**
+	 * Returns the list of processors
+	 *
+	 * @access  public
+	 * @return  array
+	 */
+	public function get_processors() {
+		return $this->processors;
+	}
+	
+	/**
+	 * Empty the list of processors
+	 *
+	 * @access  public
+	 * @return  void
+	 */
+	public function clear_processors() {
+		$this->processors = array();
 	}
 	
 }
