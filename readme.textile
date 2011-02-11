@@ -1,7 +1,7 @@
 h1. UPLC - Ultimate Php Libraries Collection
 
 Author: James Brumond
-Version: 1.0.1-rc
+Version: 0.0.1-dev
 
 Copyright 2010 James Brumond
 Dual licensed under MIT and GPL
@@ -9,11 +9,11 @@ Dual licensed under MIT and GPL
 h2. Dependencies
 
 * PHP >= 5.3
-* Images needs ImageMagick or PHP GD
+* Images needs a compatible image backend (IM or GD)
 
 h2. What is it?
 
-The UPLC is exactly what its name implies: a big collection of PHP libraries. At the moment, it includes the following libraries:
+The UPLC is exactly what its name implies: a big collection of PHP libraries. At the moment, it includes the following libraries (some not quite finished):
 
 * Compression
 * Files
@@ -21,13 +21,15 @@ The UPLC is exactly what its name implies: a big collection of PHP libraries. At
 * Input
 * Output
 * Shell
+* Database
+* Typehint (Scalar typehinting)
+* PCRE (Preg Regular Expressions)
 
 And there are plans of adding many more, including:
 
-* Database
 * ExtID (OpenID + OAuth)
 * Git
 * HTTP
-* Preg (Regular Expressions)
 * SourceMin (CSS/JS minification)
+* Errors
 

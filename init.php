@@ -1,18 +1,35 @@
 <?php
 
-/**
- * Loads the UPLC (Ultimate Php Libraries Collection)
- */
+/*
+|----------------------------------------------------------
+| Loads the UPLC (Ultimate Php Libraries Collection)
+|----------------------------------------------------------
+|
+|
+|
+*/
 
-// Set the error reporting
+/**
+ * Set the error reporting
+ */
 error_reporting(E_ALL|E_STRICT);
 
-// The UPLC directories
+/**
+ * The UPLC directories
+ */
 define('UPLC_BASEPATH', dirname(__FILE__).'/');
 define('UPLC_LIBPATH', UPLC_BASEPATH.'lib/');
 define('UPLC_RESPATH', UPLC_BASEPATH.'resources/');
 
-// Define a function with a given name
+/**
+ * Define a function with a given name
+ *
+ * @access  global
+ * @param   string    the function name
+ * @param   string    the parameters
+ * @param   string    the function body
+ * @return  void
+ */
 function define_function($func_name, $params, $body = null) {
 	if ($body === null) {
 		$body = $params;
@@ -21,13 +38,19 @@ function define_function($func_name, $params, $body = null) {
 	eval('function '.$func_name.'('.$params.') { '.$body.' }');
 }
 
-// Imports a UPLC library
+/**
+ * Imports a UPLC library
+ *
+ * @access  global
+ * @param   string    the library to load
+ * @return  void
+ */
 function import_library($lib) {
 	$uc_lib = ucwords($lib);
-	if (! function_exists($uc_lib)) {
+	$class = $uc_lib.'_library';
+	if (! function_exists($uc_lib) || isset($class::$_no_init)) {
 		$file = UPLC_LIBPATH.$lib.'.php';
 		require $file;
-		$class = $uc_lib.'_library';
 		$body = implode(' ', array(
 			'static $inst;',
 			'if (! $inst) $inst = new '.$class.';',
@@ -37,7 +60,13 @@ function import_library($lib) {
 	}
 }
 
-// Imports multiple UPLC libraries in one call
+/**
+ * Imports multiple UPLC libraries in one call
+ *
+ * @access  global
+ * @param   string..  the libraries to load
+ * @return  void
+ */
 function import_libs() {
 	$libs = func_get_args();
 	foreach ($libs as $lib) {
@@ -45,7 +74,13 @@ function import_libs() {
 	}
 }
 
-// Imports a UPLC resource file
+/**
+ * Imports a UPLC resource file
+ *
+ * @access  global
+ * @param   string    the file name
+ * @return  mixed
+ */
 function import_resource($file) {
 	$file = UPLC_RESPATH.$file.'.php';
 	if (is_file($file)) {
@@ -56,6 +91,17 @@ function import_resource($file) {
 		trigger_error($file.' is not a valid resource file');
 	}
 	trigger_error('Resource file '.$file.' does not exist');
+}
+
+/**
+ * Checks the PHP version
+ *
+ * @access  global
+ * @param   string    the version string to test
+ * @return  bool
+ */
+function is_php($version) {
+	return version_compare(PHP_VERSION, $version, '>=');
 }
 
 /* End of file init.php */
