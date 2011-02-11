@@ -33,3 +33,65 @@ And there are plans of adding many more, including:
 * HTTP
 * SourceMin (CSS/JS minification)
 
+h2. Examples
+
+UPLC has a very intuitive, simple interface. No complex, ugly system for loading and using libraries. Here are some examples from the libraries that are already being built.
+
+<pre><code><?php
+
+/**
+ * Load the UPLC
+ */
+require_once 'uplc/init.php';
+
+/**
+ * Import the libraries we want
+ */
+import_libs(
+    'input',
+    'typehint',
+    'output'
+);
+
+/**
+ * Testing the value of some POST data (input library)
+ */
+$my_post_data = Input()->post('my_data');
+if ($my_post_data)
+{
+    // Do stuff with your data...
+}
+
+/**
+ * Scalar (string, int, etc.) typehinting (typehint library)
+ */
+function test_typehint(string $str)
+{
+    echo $str;
+}
+
+/**
+ * Set the status code (output library)
+ */
+Output()->set_status(404);
+
+/**
+ * Commit some file changes to a git repository (git library)
+ */
+$repo = Git()->open('/path/to/repo');
+$repo->commit('This is a commit message...');
+
+/* End of examples */</code></pre>
+
+
+
+
+
+
+
+
+
+
+
+
+
