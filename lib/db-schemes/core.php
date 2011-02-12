@@ -344,7 +344,8 @@ abstract class Database_scheme implements Database_scheme_iface {
 	 * @return  void
 	 */
 	public function drop_table($table) {
-		
+		$query = 'DROP TABLE '.$this->quote_ident($table);
+		return $this->query($query);
 	}
 	
 	/**
@@ -355,7 +356,11 @@ abstract class Database_scheme implements Database_scheme_iface {
 	 * @return  void
 	 */
 	public function drop_db($database = null) {
-		
+		if (! is_string($database)) {
+			$database = $this->db_name;
+		}
+		$query = 'DROP DATABASE '.$this->quote_ident($database);
+		return $this->query($query);
 	}
 	
 	/**
@@ -365,10 +370,83 @@ abstract class Database_scheme implements Database_scheme_iface {
 	 * @param   string    the table name
 	 * @param   array     the definition
 	 * @param   bool      add an IF NOT EXISTS clause
+	 * @param   array     foriegn/primary keys + db engine
 	 * @return  void
 	 */
-	public function create_table($table, $definition, $if_not_exists = false) {
+	public function create_table($table, $definition, $other = array(), $if_not_exists = false) {
+		$query = 'CREATE TABLE ';
+		if ($if_not_exists) {
+			$query .= 'IF NOT EXISTS ';
+		}
+		$query .= '( ';
 		
+		if (! is_array($definition)) {
+			return false;
+		}
+		
+		$items = array();
+		
+		// Add the basic column definitions
+		foreach ($definition as $name => $desc) {
+			// Add defualt values
+			$desc = array_merge(array(
+				'type' => null,
+				'null' => true,
+				'default' => null,
+				'unsigned' => true,
+				'auto_increment' => false
+			), $desc);
+			// Add the basic definition
+			$item = $this->quote_ident($name);
+			if (! is_string($desc['type'])) {
+				return false;
+			}
+			$item .= ' '.$desc['type'];
+			// Add NULL/NOT NULL
+			if (! $desc['null']) {
+				$item .= ' NOT';
+			}
+			$desc .= ' NULL';
+			// Add the unsigned flag
+			if ($desc['unsigned']) {
+				$desc .= ' UNSIGNED';
+			}
+			// Add the auto_increment flag
+			if ($desc['auto_increment']) {
+				$desc .= ' AUTO_INCREMENT';
+			}
+			// Add the default value
+			$desc .= ' DEFAULT '.(($desc['default'] === null) ? 'NULL' : $this->quote_string($desc['default']));
+			
+			$items[] = $item;
+		}
+		
+		// Add keys
+		if (isset($other['key'])) {
+			if (is_array($other['key'])) {
+				$item = 'KEY '.$this->quote_ident(implode('_', $other['key'])).' (';
+				foreach ($other['key'] as $i => $key) {
+					$other['key'][$i] = $this->quote_ident($key);
+				}
+				$item .= implode(', ', $other['key']).')';
+			} else {
+				$item = 'KEY '.$other['key'].' ('.$this->quote_ident($other['key']).')';
+			}
+			$items[] = $item;
+		}
+		
+		// Add a primary key
+		if (isset($other['primary'])) {
+			$items[] = 'PRIMARY KEY ('.$this->quote_ident($other['primary']).')';
+		}
+		
+		// Finish building the query
+		$query .= implode(', ', $items).' )';
+		if (isset($other['engine'])) {
+			$query .= ' ENGINE='.$engine;
+		}
+		
+		return $this->query($query);
 	}
 	
 	/**

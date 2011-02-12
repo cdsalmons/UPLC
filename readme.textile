@@ -23,6 +23,7 @@ The UPLC is exactly what its name implies: a big collection of PHP libraries. At
 * Input
 * Output
 * PCRE (Preg Regular Expressions)
+* Session
 * Shell
 * Typehint (Scalar typehinting)
 
