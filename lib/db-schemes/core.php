@@ -14,16 +14,19 @@ interface Database_scheme_iface {
 	public function is_open       ();
 	public function set_charset   ($charset);
 	public function last_error    ();
+	public function query_log     ();
 	
 	public function select_db     ($db_name);
 	public function list_dbs      ();
 	public function list_tables   ($database = null);
 	
 	public function query         ($query);
+	public function run_query     ($query);
 	public function select        ($table, $fields = '*', $conditions = null, $limit = 0);
 	public function insert        ($table, $data);
 	public function update        ($table, $data, $conditions = null);
 	public function delete        ($table, $conditions = null);
+	public function empty_table   ($table);
 	public function describe      ($table);
 	
 	public function drop_table    ($table);
@@ -82,6 +85,14 @@ abstract class Database_scheme implements Database_scheme_iface {
 	protected $last_error;
 	
 	/**
+	 * A list of all queries run
+	 *
+	 * @access  protected
+	 * @type    array
+	 */
+	protected $queries = array();
+	
+	/**
 	 * Constructor
 	 *
 	 * @access  public
@@ -117,6 +128,60 @@ abstract class Database_scheme implements Database_scheme_iface {
 	}
 	
 	/**
+	 * Runs a SQL query
+	 *
+	 * @access  public
+	 * @param   string    the query
+	 * @return  mixed
+	 */
+	public final function query($query) {
+		if (! $this->is_open()) {
+			$this->open();
+		}
+		$this->queries[] = $query;
+		return $this->run_query($query);
+	}
+	
+	/**
+	 * Gets a log of all queries run
+	 *
+	 * @access  public
+	 * @return  array
+	 */
+	public final function query_log() {
+		return $this->queries;
+	}
+	
+	/**
+	 * Builds the WHERE clause portion of a query
+	 *
+	 * @access  protected
+	 * @param   mixed     WHERE conditions
+	 * @return  string
+	 */
+	protected function build_where_clause($conditions = null) {
+		$clause = '';
+		
+		if (! empty($conditions)) {
+			$clause .= ' WHERE ';
+			if (is_array($conditions)) {
+				$conds = array();
+				foreach ($conditions as $field => $value) {
+					$conds[] = sprintf('%s=%s', $this->quote_ident($field), $this->quote_string($value));
+				}
+				$conditions = implode(' AND ', $conds);
+			}
+			if (is_string($conditions)) {
+				$clause .= $conditions;
+			} else {
+				return false;
+			}
+		}
+		
+		return $clause;
+	}
+	
+	/**
 	 * Runs a select query
 	 *
 	 * @access  public
@@ -130,36 +195,29 @@ abstract class Database_scheme implements Database_scheme_iface {
 		$query = 'SELECT ';
 		
 		// Add the fields to the query
+		if (is_string($fields) && strpos('|', $fields) !== false) {
+			$fields = explode('|', $fields);
+		}
 		if (is_array($fields)) {
+			foreach ($fields as $i => $field) {
+				$fields[$i] = $this->quote_ident($field);
+			}
 			$fields = implode(', ', $fields);
 		}
 		if (is_string($fields)) {
-			if (strpos('|', $fields) !== false) {
-				$fields = str_replace('|', ', ', $fields);
-			}
+			$query .= $fields;
 		} else {
-			return false;
+			trigger_error('Bad fields value given to select method', E_USER_ERROR);
 		}
 		
 		// Add the table to the query
 		$query .= sprintf(' FROM %s ', $this->quote_ident($table));
 		
 		// Add conditionals to the query
-		if (! empty($conditions)) {
-			$query .= ' WHERE ';
-			if (is_array($conditions)) {
-				$conds = array();
-				foreach ($conditions as $field => $value) {
-					$conds[] = sprintf("%s=%s", $field, $this->quote_string($value));
-				}
-				$conditions = implode(' AND ', $conds);
-			}
-			if (is_string($conditions)) {
-				$query .= $conditions;
-			} else {
-				return false;
-			}
+		if (($where = $this->build_where_clause($conditions)) === false) {
+			return false;
 		}
+		$query .= $where;
 		
 		// Add the limit clause
 		if ($limit) {
@@ -187,15 +245,15 @@ abstract class Database_scheme implements Database_scheme_iface {
 	 * @return  void
 	 */
 	public function insert($table, $data) {
-		$query = "INSERT INTO ${table} (";
+		$query = sprintf('INSERT INTO %s (', $this->quote_ident($table));
 		
 		// Add values to the query
 		$keys = $values = array();
 		foreach ($data as $key => $value) {
-			$keys[] = $key;
-			$values[] = "'${value}'";
+			$keys[] = $this->quote_ident($key);
+			$values[] = $this->quote_string($value);
 		}
-		$query .= implode(', ', $keys)." VALUES (".implode(', ', $values).")";
+		$query .= implode(', ', $keys).") VALUES (".implode(', ', $values).")";
 		
 		// Run the query
 		return $this->query($query);
@@ -211,7 +269,23 @@ abstract class Database_scheme implements Database_scheme_iface {
 	 * @return  void
 	 */
 	public function update($table, $data, $conditions = null) {
+		$query = sprintf('UPDATE %s SET ', $this->quote_ident($table));
 		
+		// Add the SET clause
+		$data_items = array();
+		foreach ($data as $key => $value) {
+			$value = ($value == DB_DEFAULT) ? 'DEFAULT' : $this->quote_string($value);
+			$data_items[] = sprintf('%s=%s', $this->quote_ident($key), $value);
+		}
+		$query .= implode(', ', $data_items);
+		
+		// Add the WHERE clause
+		if (($where = $this->build_where_clause($conditions)) === false) {
+			return false;
+		}
+		$query .= $where;
+		
+		return $this->query($query);
 	}
 	
 	/**
@@ -223,7 +297,26 @@ abstract class Database_scheme implements Database_scheme_iface {
 	 * @return  void
 	 */
 	public function delete($table, $conditions = null) {
+		$query = 'DELETE FROM '.$this->quote_ident($table);
 		
+		// Add the WHERE clause
+		if (($where = $this->build_where_clause($conditions)) === false) {
+			return false;
+		}
+		$query .= $where;
+		
+		return $this->query($query);
+	}
+	
+	/**
+	 * Empties out a table using `DELETE FROM table`
+	 *
+	 * @access  public
+	 * @param   string    the table
+	 * @return  void
+	 */
+	public function empty_table($table) {
+		return $this->delete($table);
 	}
 	
 	/**
@@ -234,7 +327,13 @@ abstract class Database_scheme implements Database_scheme_iface {
 	 * @return  void
 	 */
 	public function describe($table) {
-		
+		$query = 'DESCRIBE '.$this->quote_ident($table);
+		if (($result = $this->query($query)) === false) {
+			return false;
+		}
+		$table = $this->build_table($result);
+		$this->free_result($result);
+		return $table;
 	}
 	
 	/**
@@ -298,7 +397,7 @@ abstract class Database_scheme implements Database_scheme_iface {
 	 */
 	public function build_table(&$resource, $use_objects = false) {
 		$result = array();
-		if ($this->num_rows($result)) {
+		if ($this->num_rows($resource)) {
 			while ($row = $this->fetch_assoc($resource)) {
 				if ($use_objects) {
 					$row = (object) $row;
@@ -338,7 +437,7 @@ abstract class Database_scheme implements Database_scheme_iface {
 			$database = $this->db_name;
 		}
 		$result = array();
-		$query = $this->query("SHOW TABLES IN ${database}");
+		$query = $this->query("SHOW TABLES IN ".$this->quote_ident($database));
 		if ($this->num_rows($query)) {
 			while ($row = $this->fetch_row($query)) {
 				$result[] = $row[0];

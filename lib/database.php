@@ -1,6 +1,7 @@
 <?php
 
 define('DB_SCHEME_PATH', UPLC_LIBPATH.'db-schemes/');
+define('DB_DEFAULT', "\0");
 
 class Database_library {
 	

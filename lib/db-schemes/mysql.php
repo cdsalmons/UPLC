@@ -13,9 +13,6 @@ class Mysql_scheme extends Database_scheme {
 	 * Opens a MySQL connection
 	 *
 	 * @access  public
-	 * @param   string    the host name
-	 * @param   string    the user name
-	 * @param   string    the password
 	 * @return  void
 	 */
 	public function open() {
@@ -49,10 +46,7 @@ class Mysql_scheme extends Database_scheme {
 	 * @param   string    the query string
 	 * @return  mixed
 	 */
-	public function query($query) {
-		if (! $this->is_open()) {
-			return false;
-		}
+	public function run_query($query) {
 		return mysql_query($query, $this->link);
 	}
 	
@@ -157,6 +151,13 @@ class Mysql_scheme extends Database_scheme {
 	 */
 	public function free_result(&$resource) {
 		return mysql_free_result($resource);
+	}
+
+// ----------------------------------------------------------------------------
+//   MySQL Specific Methods
+	
+	public function optimize_table($table) {
+		return $this->query('OPTIMIZE TABLE '.$this->quote_ident($table));
 	}
 	
 }
