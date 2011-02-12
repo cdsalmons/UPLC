@@ -132,7 +132,7 @@ class Files_library {
 		{
 			if (! @mkdir($path, 0777))
 			{
-				show_error('Could not create directory '.basename($path).'.', 500);
+				trigger_error('Could not create directory '.basename($path).'.', E_USER_ERROR);
 			}
 		}
 	}

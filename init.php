@@ -48,9 +48,13 @@ function define_function($func_name, $params, $body = null) {
 function import_library($lib) {
 	$uc_lib = ucwords($lib);
 	$class = $uc_lib.'_library';
-	if (! function_exists($uc_lib) || isset($class::$_no_init)) {
-		$file = UPLC_LIBPATH.$lib.'.php';
-		require $file;
+	
+	// Include the file
+	$file = UPLC_LIBPATH.$lib.'.php';
+	require_once $file;
+	
+	// Define the shortcut function if needed
+	if (! function_exists($uc_lib) && ! isset($class::$_no_init)) {
 		$body = implode(' ', array(
 			'static $inst;',
 			'if (! $inst) $inst = new '.$class.';',
@@ -105,3 +109,4 @@ function is_php($version) {
 }
 
 /* End of file init.php */
+/* Location: ./init.php */
