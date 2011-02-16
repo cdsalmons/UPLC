@@ -19,6 +19,7 @@ error_reporting(E_ALL|E_STRICT);
  */
 define('UPLC_BASEPATH', dirname(__FILE__).'/');
 define('UPLC_LIBPATH', UPLC_BASEPATH.'lib/');
+define('UPLC_CLASSPATH', UPLC_LIBPATH.'classes/');
 define('UPLC_RESPATH', UPLC_BASEPATH.'resources/');
 
 /**
@@ -76,6 +77,20 @@ function import_libs() {
 	foreach ($libs as $lib) {
 		import_library($lib);
 	}
+}
+
+/**
+ * Imports a UPLC helper class
+ *
+ * @access  global
+ * @param   string    the library to load
+ * @param   mixed     an argument to pass to the constructor
+ * @return  void
+ */
+function load_class($class, $arg = null) {
+	require_once UPLC_CLASSPATH.$class.'.php';
+	$class = str_replace('-', '_', $class);
+	return (new $class($arg));
 }
 
 /**

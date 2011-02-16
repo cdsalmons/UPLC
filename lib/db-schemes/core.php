@@ -6,6 +6,7 @@
 interface Database_scheme_iface {
 	
 	public function __construct   ($conf);
+	public function __destruct    ();
 	public function pre_init      (&$conf);
 	public function init          ();
 	
@@ -41,7 +42,7 @@ interface Database_scheme_iface {
 	public function free_result   (&$resource);
 	public function insert_id     ($bigint = false);
 	
-	public function escape_string ($str);
+	public function escape_string ($str, $bytea = false);
 	public function quote_string  ($str);
 	public function quote_ident   ($str);
 	
@@ -85,6 +86,14 @@ abstract class Database_scheme implements Database_scheme_iface {
 	protected $last_error;
 	
 	/**
+	 * The last recieved result object
+	 *
+	 * @access  protected
+	 * @type    resource
+	 */
+	protected $last_result;
+	
+	/**
 	 * A list of all queries run
 	 *
 	 * @access  protected
@@ -105,6 +114,16 @@ abstract class Database_scheme implements Database_scheme_iface {
 		$this->db_name = $this->conf->db;
 		$this->open();
 		$this->init();
+	}
+	
+	/**
+	 * Destructor
+	 *
+	 * @access  public
+	 * @return  void
+	 */
+	public final function __destruct() {
+		$this->close();
 	}
 	
 	/**
@@ -139,7 +158,8 @@ abstract class Database_scheme implements Database_scheme_iface {
 			$this->open();
 		}
 		$this->queries[] = $query;
-		return $this->run_query($query);
+		$this->last_result = $this->run_query($query);
+		return $this->last_result;
 	}
 	
 	/**
@@ -192,48 +212,8 @@ abstract class Database_scheme implements Database_scheme_iface {
 	 * @return  void
 	 */
 	public function select($table, $fields = '*', $conditions = null, $limit = 0) {
-		$query = 'SELECT ';
-		
-		// Add the fields to the query
-		if (is_string($fields) && strpos('|', $fields) !== false) {
-			$fields = explode('|', $fields);
-		}
-		if (is_array($fields)) {
-			foreach ($fields as $i => $field) {
-				$fields[$i] = $this->quote_ident($field);
-			}
-			$fields = implode(', ', $fields);
-		}
-		if (is_string($fields)) {
-			$query .= $fields;
-		} else {
-			trigger_error('Bad fields value given to select method', E_USER_ERROR);
-		}
-		
-		// Add the table to the query
-		$query .= sprintf(' FROM %s ', $this->quote_ident($table));
-		
-		// Add conditionals to the query
-		if (($where = $this->build_where_clause($conditions)) === false) {
-			return false;
-		}
-		$query .= $where;
-		
-		// Add the limit clause
-		if ($limit) {
-			$query .= ' LIMIT ';
-			if (is_int($limit)) {
-				$query .= '0, '.$limit;
-			} else {
-				$query .= $limit;
-			}
-		}
-		
-		// Run the query and process the result into an array
-		$result = $this->query($query);
-		$table = $this->build_table($result);
-		$this->free_result($result);
-		return $table;
+		$query = load_class('database-select', $this);
+		return $query->fields($fields);
 	}
 	
 	/**
@@ -532,7 +512,10 @@ abstract class Database_scheme implements Database_scheme_iface {
 	 * @return  string
 	 */
 	public function quote_string($str) {
-		return sprintf("'%s'", $this->escape_string($str));
+		if (! is_numeric($str)) {
+			$str = sprintf("'%s'", $this->escape_string($str));
+		}
+		return $str;
 	}
 	
 	/**
@@ -542,8 +525,11 @@ abstract class Database_scheme implements Database_scheme_iface {
 	 * @param   string    the identifier
 	 * @return  string
 	 */
-	public function quote_ident($str) {
-		return sprintf('`%s`', $this->escape_string($str));
+	public function quote_ident($str, $ignore_dots = false) {
+		if (! $ignore_dots && strpos('.', $str) !== false) {
+			$str = str_replace('.', '`.`', $str);
+		}
+		return sprintf('`%s`', $str);
 	}
 	
 }

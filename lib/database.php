@@ -85,7 +85,7 @@ class Database_library {
 		$conf = array_merge(array(
 			'charset' => 'utf8',
 			'collation' => 'utf8_general_ci',
-			'port' => 3306,
+			'port' => null,
 			'db' => null
 		), $conf);
 	}

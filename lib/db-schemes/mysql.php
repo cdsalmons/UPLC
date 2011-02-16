@@ -17,11 +17,18 @@ class Mysql_scheme extends Database_scheme {
 	 */
 	public function open() {
 		$this->close();
+		// Build the host:port string
+		$host_port = $this->conf->host;
+		if (isset($this->conf->port)) {
+			$host_port .= ':'.$this->conf->port;
+		}
+		// Connect
 		$this->link = mysql_connect(
-			$this->conf->host.':'.$this->conf->port,
+			$host_port,
 			$this->conf->user,
 			$this->conf->pass
 		);
+		// Select the db
 		if ($this->db_name) {
 			$this->select_db($this->db_name);
 		}
@@ -57,7 +64,7 @@ class Mysql_scheme extends Database_scheme {
 	 * @param   string    the string to escape
 	 * @return  string
 	 */
-	public function escape_string($str) {
+	public function escape_string($str, $bytea = false) {
 		return mysql_real_escape_string($str, $this->link);
 	}
 	

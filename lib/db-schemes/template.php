@@ -57,7 +57,7 @@ class TEMPLATE_scheme extends Database_scheme {
 	 * @param   string    the string to escape
 	 * @return  string
 	 */
-	public function escape_string($str) {
+	public function escape_string($str, $bytea = false) {
 		//
 		// Should return a query-safe escaped string based on
 		// the parameter passed in.

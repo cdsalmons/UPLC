@@ -10,8 +10,6 @@
 |
 */
 
-
-
 /**
  * Only initialize if using PHP 5
  *
@@ -20,118 +18,86 @@
  */
 if (! is_php('6.0.0')) :
 
-
-
-// Used to pull the error messages apart
-define('TYPEHINT_PCRE','/^Argument (\d)+ passed to (?:(\w+)::)?(\w+)\(\) must be an instance of (\w+), (\w+) given/');
-
-// The actual handler class
+/**
+ * The typehint class
+ */
 class Typehint_library {
 	
-	// Tell UPLC not to create a Typehint() function
-	public static $_no_init = true;
+	/**
+	 * The parser regex
+	 *
+	 * @const   REGEX
+	 * @access  public
+	 * @type    string
+	 */
+	const REGEX = '/^Argument (\d)+ passed to (.+) must be an instance of (?<hint>.+), (?<given>.+) given/';
 	
 	/**
-	 * Typehint handlers
+	 * A list of all scalar types
+	 *
+	 * @access  protected
+	 * @type    array
 	 */
-	private static $Typehints = array(
-		'boolean'  => 'is_bool',
-		'integer'  => 'is_int',
-		'float'    => 'is_float',
-		'string'   => 'is_string',
-		'resource' => 'is_resource'
+	protected static $scalar_types = array(
+		'string', 'int', 'integer', 'float', 'double', 'bool', 'boolean'
 	);
 	
-	// We do not need a constructor
-	private function __construct() { }
-
 	/**
-	 * Initialize the typehint handler
+	 * Constructor
+	 */
+	public function __construct() { }
+	
+	/**
+	 * Initializes the system, adding the error handler
 	 *
 	 * @access  public
-	 * @return  Bool(true)
+	 * @return  void
 	 */
-	public static function initializeHandler()
-	{
-		set_error_handler('Typehint_library::handleTypehint');
-		return true;
-	}
-
-	/**
-	 * Gets arguments that have been typehinted
-	 *
-	 * @access  private
-	 * @param   array     backtrace
-	 * @param   string    the function
-	 * @param   int       the argument index
-	 * @param   &mixed    the value
-	 * @return  bool
-	 */
-	private static function getTypehintedArgument($ThBackTrace, $ThFunction, $ThArgIndex, &$ThArgValue)
-	{
-		foreach ($ThBackTrace as $ThTrace)
-		{
-			// Match the function; Note we could do more defensive error checking.
-			if (isset($ThTrace['function']) && $ThTrace['function'] == $ThFunction)
-			{
-				$ThArgValue = $ThTrace['args'][$ThArgIndex - 1];
-				return true;
-			}
-		}
-
-		return false;
+	public static function initialize() {
+		set_error_handler('Typehint_library::handle_typehint');
 	}
 	
 	/**
-	 * Handles a specific typehint instance
+	 * The typehint handler
 	 *
 	 * @access  public
 	 * @param   int       the error level
-	 * @param   string    the error string
+	 * @param   string    the error message
 	 * @return  bool
 	 */
-	public static function handleTypehint($ErrLevel, $ErrMessage)
-	{
-		// Make sure the error can be recovered
-		if ($ErrLevel == E_RECOVERABLE_ERROR)
-		{
-			// Check that it is a typehint error
-			if (preg_match(TYPEHINT_PCRE, $ErrMessage, $ErrMatches))
-			{
-				list($ErrMatch, $ThArgIndex, $ThClass, $ThFunction, $ThHint, $ThType) = $ErrMatches;
-				
-				// Check that it is a registered scalar
-				if (isset(self::$Typehints[$ThHint]))
-				{
-					$ThBacktrace = debug_backtrace();
-					$ThArgValue  = null;
-					
-					// Run the type check
-					if (self::getTypehintedArgument($ThBacktrace, $ThFunction, $ThArgIndex, $ThArgValue))
-					{
-						if (call_user_func(self::$Typehints[$ThHint], $ThArgValue))
-						{
-							return true;
-						}
-					}
-				}
+	public static function handle_typehint($lvl, $msg) {
+		// Make sure we're dealing with a typehint error
+		if ($lvl == E_RECOVERABLE_ERROR && preg_match(self::REGEX, $msg, $match)) {
+			switch ($match['hint']) {
+				// Convert synonomous data types
+				case 'int':
+					$match['hint'] = 'integer';
+				break;
+				case 'double':
+					$match['hint'] = 'float';
+				break;
+				case 'bool':
+					$match['hint'] = 'boolean'; 
+				break;
+				// Handle a general object hint
+				case 'object':
+					return (! in_array($match['given'], self::$scalar_types));
+				break;
 			}
+			return ($match['hint'] == $match['given']);
 		}
 
 		return false;
 	}
+	
 }
 
-// Initialize...
-Typehint_library::initializeHandler();
-
-
+// Initialize
+Typehint_library::initialize();
 
 /**
  * End of PHP < 6 test
  */
 endif;
-
-
 
 /* End of file typehint.php */
