@@ -16,9 +16,14 @@ h2. What is it?
 The UPLC is exactly what its name implies: a big collection of PHP libraries. At the moment, it includes the following libraries (some not quite finished):
 
 * Compression
+* Cookies
+* Crypto
 * Database
+* Datetime
 * Files
 * Git
+* Hashing
+* HTTP
 * Images
 * Input
 * Output
@@ -31,7 +36,6 @@ And there are plans of adding many more, including:
 
 * Errors
 * ExtID (OpenID + OAuth)
-* HTTP
 * SourceMin (CSS/JS minification)
 
 h2. Examples

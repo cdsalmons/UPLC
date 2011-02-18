@@ -81,7 +81,7 @@ class Session_library extends Uplc_library {
 	 */
 	public function construct($config) {
 		// Import the needed libraries
-		import('database', 'input', 'cookies', 'datetime', 'hashing');
+		import('database', 'input', 'cookies', 'datetime', 'hashing', 'crypto');
 		
 		// Store the current time
 		$this->now = Datetime()->now();
@@ -256,7 +256,7 @@ class Session_library extends Uplc_library {
 			return false;
 		}
 		
-		// Test the cookie for validity
+		// Decrypt the cookie
 		if ($this->hash_string($cookie[0]) != $cookie[1]) {
 			return false;
 		}
@@ -325,10 +325,56 @@ class Session_library extends Uplc_library {
 	 */
 	protected function generate_cookie() {
 		if ($this->is_active()) {
-			return $this->sess_id.self::COOKIE_SEP.$this->hash_string($this->sess_id.$this->session_data['last_active']);
+			return Crypto()->encrypt($this->serialize($this->session_data), $this->conf->get('encryption_key'));
 		}
 		
 		return false;
+	}
+	
+	/**
+	 * Serializes a variable into a storeable string.
+	 *
+	 * @access  protected
+	 * @param   mixed     the value to serialize
+	 * @return  string
+	 */
+	protected function serialize($data) {
+		if (is_array($data)) {
+			foreach ($data as $key => $val) {
+				if (is_string($val)) {
+					$data[$key] = str_replace('\\', '{{slash}}', $val);
+				}
+			}
+		} else {
+			if (is_string($data)) {
+				$data = str_replace('\\', '{{slash}}', $data);
+			}
+		}
+
+		return serialize($data);
+	}
+
+	/**
+	 * Unserializes a string back into a usable value
+	 *
+	 * @access  protected
+	 * @param   string    the serialized data
+	 * @return  mixed
+	 */
+	protected function unserialize($data) {
+		$data = @unserialize(strip_slashes($data));
+
+		if (is_array($data)) {
+			foreach ($data as $key => $val) {
+				if (is_string($val)) {
+					$data[$key] = str_replace('{{slash}}', '\\', $val);
+				}
+			}
+
+			return $data;
+		}
+
+		return (is_string($data)) ? str_replace('{{slash}}', '\\', $data) : $data;
 	}
 	
 	/**
