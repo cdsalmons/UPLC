@@ -358,7 +358,7 @@ class Http_request {
 			}
 		
 			// Finish up
-			return load_class('http-response', array(
+			return UPLC()->load_class('http-response', array(
 				'header' => $header_arr,
 				'body' => $response,
 				'raw' => $header.$response

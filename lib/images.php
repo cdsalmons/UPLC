@@ -11,7 +11,7 @@ define('IMGLIB_GD', 2);
  * @class   Image_library
  * @parent  void
  */
-class Image_library {
+class Image_library extends {
 
 	/**
 	 * Constructor
@@ -19,8 +19,8 @@ class Image_library {
 	 * @access  public
 	 * @return  void
 	 */
-	public function __construct() {
-		import_libs('shell', 'files');
+	public function construct() {
+		import('shell', 'files');
 		$this->img_lib = $this->determine_library();
 		$this->pngcrush = Shell()->command_exists('pngcrush');
 	}
@@ -37,7 +37,7 @@ class Image_library {
 	 * @return  void
 	 */
 	protected function no_engine_found() {
-		show_error('No compatible image library was found.', 500);
+		trigger_error('No compatible image library was found.', E_USER_ERROR);
 	}
 	
 	/**

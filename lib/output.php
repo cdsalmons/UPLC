@@ -1,11 +1,11 @@
 <?php
 
-class Output_library {
+class Output_library extends Uplc_library {
 	
 	/**
 	 * Constructor
 	 */
-	public function __construct() {
+	public function construct() {
 		
 	}
 	

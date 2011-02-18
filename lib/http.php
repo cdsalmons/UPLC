@@ -1,15 +1,24 @@
 <?php
 
 // A CR+LF constant
-define('CRLF', "\r\n");
+if (! defined('CRLF')) {
+	define('CRLF', "\r\n");
+}
+
+// Transfer methods
 define('UPLC_HTTP_TCP', 0);
 define('UPLC_HTTP_SSL', 1);
 define('UPLC_HTTP_TLS', 2);
 
-class Http_library {
+/**
+ * The HTTP class
+ */
+class Http_library extends Uplc_library {
 	
 	/**
-	 * The request headers for the current script
+	 * The request headers for the current script with some
+	 * modifications. Used as the default headers for a new
+	 * request.
 	 *
 	 * @access  protected
 	 * @type    array
@@ -18,9 +27,13 @@ class Http_library {
 	
 	/**
 	 * Constructor
+	 *
+	 * @access  public
+	 * @return  void
 	 */
-	public function __construct() {
-		import_library('input');
+	public function construct() {
+		// Use the input library to get a list of headers
+		import('input');
 		$this->request_headers = Input()->headers();
 		
 		// Default to a closed connection
@@ -53,7 +66,7 @@ class Http_library {
 	 * @return  Http_request
 	 */
 	public function open($method = 'GET') {
-		return load_class('http-request', $method);
+		return UPLC()->load_class('http-request', $method);
 	}
 	
 	/**

@@ -3,7 +3,7 @@
 define('COMPRESS_GZIP', 1); // == FORCE_GZIP
 define('COMPRESS_ZLIB', 2); // == FORCE_DEFLATE
 
-class Compression_library {
+class Compression_library extends Uplc_library {
 	
 	const GZIP = COMPRESS_GZIP;
 	const ZLIB = COMPRESS_ZLIB;
@@ -14,7 +14,7 @@ class Compression_library {
 	 * @access  public
 	 * @return  void
 	 */
-	public function __construct() {
+	public function construct() {
 		
 	}
 	
@@ -65,7 +65,7 @@ class Compression_library {
 	 * @return  string or FALSE
 	 */
 	public function compress_file($input_file, $output_file = null, $compression_level = 9, $method = self::GZIP) {
-		import_library('files');
+		import('files');
 		$should_return = ($output_file === true);
 		if (! $output_file) {
 			$output_file = $input_file.$this->file_extensions[$method];

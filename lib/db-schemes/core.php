@@ -20,6 +20,7 @@ interface Database_scheme_iface {
 	public function select_db     ($db_name);
 	public function list_dbs      ();
 	public function list_tables   ($database = null);
+	public function table_exists  ($database = null);
 	
 	public function query         ($query);
 	public function run_query     ($query);
@@ -32,7 +33,7 @@ interface Database_scheme_iface {
 	
 	public function drop_table    ($table);
 	public function drop_db       ($database = null);
-	public function create_table  ($table, $definition, $if_not_exists = false);
+	public function create_table  ($table, $definition, $other = array(), $if_not_exists = false);
 	public function create_db     ($db, $if_not_exists = false);
 	
 	public function num_rows      (&$resource);
@@ -212,7 +213,7 @@ abstract class Database_scheme implements Database_scheme_iface {
 	 * @return  void
 	 */
 	public function select($table, $fields = '*', $conditions = null, $limit = 0) {
-		$query = load_class('database-select', $this);
+		$query = UPLC()->load_class('database-select', $this);
 		return $query->fields($fields);
 	}
 	
@@ -373,7 +374,7 @@ abstract class Database_scheme implements Database_scheme_iface {
 				'type' => null,
 				'null' => true,
 				'default' => null,
-				'unsigned' => true,
+				'unsigned' => false,
 				'auto_increment' => false
 			), $desc);
 			// Add the basic definition
@@ -386,17 +387,17 @@ abstract class Database_scheme implements Database_scheme_iface {
 			if (! $desc['null']) {
 				$item .= ' NOT';
 			}
-			$desc .= ' NULL';
+			$item .= ' NULL';
 			// Add the unsigned flag
 			if ($desc['unsigned']) {
-				$desc .= ' UNSIGNED';
+				$item .= ' UNSIGNED';
 			}
 			// Add the auto_increment flag
 			if ($desc['auto_increment']) {
-				$desc .= ' AUTO_INCREMENT';
+				$item .= ' AUTO_INCREMENT';
 			}
 			// Add the default value
-			$desc .= ' DEFAULT '.(($desc['default'] === null) ? 'NULL' : $this->quote_string($desc['default']));
+			$item .= ' DEFAULT '.(($desc['default'] === null) ? 'NULL' : $this->quote_string($desc['default']));
 			
 			$items[] = $item;
 		}
@@ -505,6 +506,26 @@ abstract class Database_scheme implements Database_scheme_iface {
 	}
 	
 	/**
+	 * Check if a table exists
+	 *
+	 * @access  public
+	 * @param   string    the table name
+	 * @param   string    the database to test in
+	 * @return  bool
+	 */
+	public function table_exists($table, $database = null) {
+		// Test for the database.table syntax
+		if (strpos($table, '.') !== false && $database === null) {
+			$table = explode('.', $table);
+			$database = $table[0];
+			$table = $table[1];
+		}
+		// Check if the table exists
+		$tables = list_tables($table, $database);
+		return in_array($table, $tables);
+	}
+	
+	/**
 	 * Quotes a value string
 	 *
 	 * @access  public
@@ -512,7 +533,7 @@ abstract class Database_scheme implements Database_scheme_iface {
 	 * @return  string
 	 */
 	public function quote_string($str) {
-		if (! is_numeric($str)) {
+		if (is_string($str)) {
 			$str = sprintf("'%s'", $this->escape_string($str));
 		}
 		return $str;

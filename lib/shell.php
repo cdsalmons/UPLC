@@ -6,7 +6,7 @@
  * @class   Shell_library
  * @parent  void
  */
-class Shell_library {
+class Shell_library extends Uplc_library {
 
 	/**
 	 * Runs a shell command
@@ -54,3 +54,4 @@ class Shell_library {
 }
 
 /* End of file shell.php */
+/* Location: ./lib/shell.php */

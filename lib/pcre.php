@@ -1,10 +1,17 @@
 <?php
 
-class Pcre_library {
+/**
+ * PCRE class
+ */
+class Pcre_library extends Uplc_library {
 	
-	public function __construct() {
-	
-	}
+	/**
+	 * Constructor
+	 *
+	 * @access  public
+	 * @return  void
+	 */
+	public function construct() { }
 	
 	/**
 	 * Get the version and release date of the currently
@@ -25,7 +32,7 @@ class Pcre_library {
 	 * @param   string    the modifiers
 	 * @return  Pcre_library_regex
 	 */
-	public function compile(string $pattern, string $modifiers = '') {
+	public function compile($pattern, $modifiers = '') {
 		if (! strlen($pattern)) {
 			throw new Exception('No pattern string given');
 		}
@@ -39,7 +46,7 @@ class Pcre_library {
 	 * @param   string    the pattern delim
 	 * @return  string
 	 */
-	public function quote(string $segment, $delim = null) {
+	public function quote($segment, $delim = null) {
 		return preg_quote($segment, $delim);
 	}
 	
@@ -53,7 +60,7 @@ class Pcre_library {
 	 * @param   int       the offset position
 	 * @return  array -or- NULL
 	 */
-	public function match(string $pattern, string $subject, $capture_offset = false, $offset = 0) {
+	public function match($pattern, $subject, $capture_offset = false, $offset = 0) {
 		if ($capture_offset) {
 			preg_match($pattern, $subject, $result, PREG_OFFSET_CAPTURE, $offset);
 		} else {
@@ -72,7 +79,7 @@ class Pcre_library {
 	 * @param   int       the offset position
 	 * @return  array -or- NULL
 	 */
-	public function match_all(string $pattern, string $subject, $flags = PREG_PATTERN_ORDER, $offset = 0) {
+	public function match_all($pattern, $subject, $flags = PREG_PATTERN_ORDER, $offset = 0) {
 		preg_match_all($pattern, $subject, $result, $flags, $offset);
 		return $result;
 	}
@@ -88,7 +95,7 @@ class Pcre_library {
 	 * @param   &int      the number of replacements
 	 * @return  mixed
 	 */
-	public function replace(string $pattern, string $replace, $subject, $limit = -1, &$count = 0) {
+	public function replace($pattern, $replace, $subject, $limit = -1, &$count = 0) {
 		return preg_replace($pattern, $replace, $subject, $limit, $count);
 	}
 	
@@ -103,7 +110,7 @@ class Pcre_library {
 	 * @param   &int      the number of replacements
 	 * @return  mixed
 	 */
-	public function replace_callback(string $pattern, $callback, $subject, $limit = -1, &$count = 0) {
+	public function replace_callback($pattern, $callback, $subject, $limit = -1, &$count = 0) {
 		return preg_replace_callback($pattern, $callback, $subject, $limit, $count);
 	}
 	
@@ -116,7 +123,7 @@ class Pcre_library {
 	 * @param   bool      invert the match?
 	 * @return  array
 	 */
-	public function grep(string $pattern, $input, $invert = false) {
+	public function grep($pattern, $input, $invert = false) {
 		if ($invert) {
 			$result = preg_grep($pattern, $input, PREG_GREP_INVERT);
 		} else {
@@ -224,7 +231,7 @@ class Pcre_library_regex {
 	 * @param   string    the pattern string
 	 * @param   string    pattern modifiers
 	 */
-	public function __construct(string $pattern, string $modifiers = '') {
+	public function __construct($pattern, $modifiers = '') {
 		if (! strlen($pattern)) {
 			throw new Exception('No pattern string given');
 		}
@@ -290,7 +297,7 @@ class Pcre_library_regex {
 	 * @param   int       the matching offset
 	 * @return  array -or- NULL
 	 */
-	public function match(string $subject, $capture_offset = false, $offset = 0) {
+	public function match($subject, $capture_offset = false, $offset = 0) {
 		return Pcre()->match($this->pattern_string(), $subject, $capture_offset, $offset);
 	}
 	
@@ -303,7 +310,7 @@ class Pcre_library_regex {
 	 * @param   int       the matching offset
 	 * @return  bool
 	 */
-	public function test(string $subject, $capture_offset = false, $offset = 0) {
+	public function test($subject, $capture_offset = false, $offset = 0) {
 		return (!! $this->match($subject, $capture_offset, $offset));
 	}
 	

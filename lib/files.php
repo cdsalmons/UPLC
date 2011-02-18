@@ -1,12 +1,12 @@
 <?php
 
-class Files_library {
+class Files_library extends Uplc_library {
 	
 	/**
 	 * Constructor
 	 */
-	public function __construct() {
-		$this->mimes = import_resource('mimes');
+	public function construct($config) {
+		$this->mimes = UPLC()->import_resource('mimes');
 	}
 
 	/**
@@ -128,15 +128,58 @@ class Files_library {
 		$parent = dirname($path);
 		if (! is_dir($parent)) $this->touch_dir($parent);
 		// Check if the directory exists
-		if (! is_dir($path))
-		{
-			if (! @mkdir($path, 0777))
-			{
-				trigger_error('Could not create directory '.basename($path).'.', E_USER_ERROR);
-			}
+		if (! is_dir($path) && ! @mkdir($path, 0777)) {
+			trigger_error('Could not create directory '.basename($path).'.', E_USER_ERROR);
 		}
 	}
 	
+	/**
+	 * Reads a listing of the files in a directory
+	 *
+	 * @access  public
+	 * @param   string    the directory path
+	 * @param   bool      include dot files?
+	 * @param   bool      include "." and ".."?
+	 * @return  array
+	 */
+	public function read_directory($path, $dots = true, $rels = false) {
+		if ($dir = opendir($path)) {
+			// Read the files
+			$files = array();
+			while (false !== ($file = readdir($dir))) {
+				// Exclude dot files if requested
+				if (! $dots && $file[0] == '.') {
+					continue;
+				}
+				// Exclude "."/".." if requested
+				if (! $rels && ($file == '.' || $file == '..')) {
+					continue;
+				}
+				// Add the file to the list
+				$files[] = $file;
+			}
+			
+			return $files;
+		}
+		
+		return false;
+	}
+	
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 /* End of file files.php */

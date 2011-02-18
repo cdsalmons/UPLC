@@ -13,8 +13,6 @@
  * @link       http://github.com/kbjr/Git.php
  */
 
-if (__FILE__ == $_SERVER['SCRIPT_FILENAME']) die('No direct script access');
-
 // ------------------------------------------------------------------------
 
 /**
@@ -23,16 +21,14 @@ if (__FILE__ == $_SERVER['SCRIPT_FILENAME']) die('No direct script access');
  * This class enables the creating, reading, and manipulation
  * of git repositories.
  *
- * @class  Git
+ * @class  Git_library
  */
-class Git_library {
+class Git_library extends Uplc_library {
 	
 	/**
 	 * Constructor
 	 */
-	public function __construct() {
-		
-	}
+	public function construct() { }
 
 	/**
 	 * Create a new git repository

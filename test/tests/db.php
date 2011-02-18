@@ -1,7 +1,7 @@
 <?php
 
 // Load the database library
-import_library('database');
+import('database');
 
 // Open a MySQL connection
 Database()->open('test', 'mysql://testuser:testpass@localhost/testdb');
@@ -34,4 +34,4 @@ print_r(
 );
 
 /* End of file db.php */
-/* Location: ./test/db.php */
+/* Location: ./test/tests/db.php */

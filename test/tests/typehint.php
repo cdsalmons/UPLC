@@ -1,7 +1,7 @@
 <?php
 
 // Load the scalar typehinting library
-import_library('typehint');
+import('typehint');
 
 // Create a function with scalar typehinting
 function foo(string $arg1, int $arg2) {
@@ -14,4 +14,4 @@ echo "Should output: 'barbar'\n";
 echo "Output: ".foo('bar', 2)."\n\n";
 
 /* End of file typehint.php */
-/* Location: ./test/typehint.php */
+/* Location: ./test/tests/typehint.php */

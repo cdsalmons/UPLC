@@ -1,7 +1,7 @@
 <?php
 
 // Load the HTTP library
-import_library('http');
+import('http');
 
 // Try a basic GET request
 echo Http()
@@ -11,4 +11,4 @@ echo Http()
 	->raw_response();
 
 /* End of file http.php */
-/* Location: ./test/http.php */
+/* Location: ./test/tests/http.php */

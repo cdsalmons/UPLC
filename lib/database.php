@@ -3,7 +3,78 @@
 define('DB_SCHEME_PATH', UPLC_LIBPATH.'db-schemes/');
 define('DB_DEFAULT', "\0");
 
-class Database_library {
+class Database_library extends Uplc_library {
+	
+	/**
+	 * Constructor
+	 */
+	public function construct() { }
+	
+	/**
+	 * Open a database connection
+	 *
+	 * @access  public
+	 * @param   string    the name
+	 * @param   mixed     the config
+	 * @return  Database_scheme
+	 */
+	public function &open($name, $conf = null) {
+		// Handle a no-name call
+		if ($conf === null) {
+			$conf = $name;
+			$name = null;
+		}
+		
+		// Figure out how to handle the data given
+		if (is_string($conf)) {
+			$conf = array('dsn' => $conf);
+		} elseif (is_object($conf)) {
+			$conf = (array) $conf;
+		} elseif (! is_array($conf)) {
+			trigger_error('Cannot open new database connection, no config data given', E_USER_ERROR);
+		}
+		
+		// Check for a DSN string
+		if (isset($conf['dsn'])) {
+			$this->parse_dsn($conf);
+		}
+		
+		// Check that the config data is valid
+		if (! $this->config_is_valid($conf)) {
+			trigger_error('Database configuration is invalid', E_USER_ERROR);
+		}
+		
+		// Fill in any missing optional config data
+		$this->complete_config($conf);
+		$conf = (object) $conf;
+		
+		// Open the new connection
+		$class = $this->load_scheme($conf->scheme);
+		$instance = new $class($conf);
+		if ($name === null) {
+			$this->connections[] =& $instance;
+		} else {
+			$this->connections[$name] =& $instance;
+		}
+		
+		return $instance;
+	}
+	
+	/**
+	 * Get a connection by name
+	 *
+	 * @access  public
+	 * @param   string    the connection name
+	 * @return  Database_scheme
+	 */
+	public function &get_connection($name) {
+		if (! isset($this->connections[$name])) {
+			trigger_error("Connection with name '${name}' does not exist", E_USER_ERROR);
+		}
+		return $this->connections[$name];
+	}
+
+// ----------------------------------------------------------------------------
 	
 	/**
 	 * The active connections
@@ -88,75 +159,6 @@ class Database_library {
 			'port' => null,
 			'db' => null
 		), $conf);
-	}
-	
-	/**
-	 * Constructor
-	 */
-	public function __construct() { }
-	
-	/**
-	 * Open a database connection
-	 *
-	 * @access  public
-	 * @param   string    the name
-	 * @param   mixed     the config
-	 * @return  Database_scheme
-	 */
-	public function &open($name, $conf = null) {
-		// Handle a no-name call
-		if ($conf === null) {
-			$conf = $name;
-			$name = null;
-		}
-		
-		// Figure out how to handle the data given
-		if (is_string($conf)) {
-			$conf = array('dsn' => $conf);
-		} elseif (is_object($conf)) {
-			$conf = (array) $conf;
-		} elseif (! is_array($conf)) {
-			trigger_error('Cannot open new database connection, no config data given', E_USER_ERROR);
-		}
-		
-		// Check for a DSN string
-		if (isset($conf['dsn'])) {
-			$this->parse_dsn($conf);
-		}
-		
-		// Check that the config data is valid
-		if (! $this->config_is_valid($conf)) {
-			trigger_error('Database configuration is invalid', E_USER_ERROR);
-		}
-		
-		// Fill in any missing optional config data
-		$this->complete_config($conf);
-		$conf = (object) $conf;
-		
-		// Open the new connection
-		$class = $this->load_scheme($conf->scheme);
-		$instance = new $class($conf);
-		if ($name === null) {
-			$this->connections[] =& $instance;
-		} else {
-			$this->connections[$name] =& $instance;
-		}
-		
-		return $instance;
-	}
-	
-	/**
-	 * Get a connection by name
-	 *
-	 * @access  public
-	 * @param   string    the connection name
-	 * @return  Database_scheme
-	 */
-	public function &get_connection($name) {
-		if (! isset($this->connections[$name])) {
-			trigger_error("Connection with name '${name}' does not exist", E_USER_ERROR);
-		}
-		return $this->connections[$name];
 	}
 
 }

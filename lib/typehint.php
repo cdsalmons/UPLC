@@ -98,6 +98,6 @@ Typehint_library::initialize();
 /**
  * End of PHP < 6 test
  */
-endif;
+else : class Typehint_library { } endif;
 
 /* End of file typehint.php */

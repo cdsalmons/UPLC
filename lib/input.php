@@ -1,29 +1,6 @@
 <?php
 
-class Input_library {
-	
-	/**
-	 * Constructor
-	 */
-	public function __construct() {
-		// Import super-globals
-		$this->post_data   = $_POST;
-		$this->get_data    = $_GET;
-		$this->server_data = $_SERVER;
-		$this->files_data  = $_FILES;
-		$this->cookie_data = $_COOKIE;
-		// Read the headers from the $_SERVER array
-		$this->headers_data = array();
-		foreach ($this->server_data as $key => $value) {
-			$sections = explode('_', $key);
-			if ($sections[0] == 'HTTP') {
-				$sections = array_slice($sections, 1);
-				$key = implode(' ', $sections);
-				$key = str_replace(' ', '-', ucwords(strtolower($key)));
-				$this->headers_data[$key] = $value;
-			}
-		}
-	}
+class Input_library extends Uplc_library {
 	
 	/**
 	 * The POST data
@@ -82,25 +59,137 @@ class Input_library {
 	protected $encoding = null;
 	
 	/**
-	 * Reads from a *_data array
+	 * The user agent string
 	 *
 	 * @access  protected
-	 * @param   string    the array to read
-	 * @param   string    the item to read
-	 * @return  mixed
+	 * @type    string
 	 */
-	protected function read_data($arr, $item = null) {
-		$arr = $arr.'_data';
-		$arr = $this->$arr;
-		if ($item) {
-			if (array_key_exists($item, $arr)) {
-				return $arr[$item];
-			} else {
+	protected $user_agent = null;
+	
+	/**
+	 * The IP address
+	 *
+	 * @access  protected
+	 * @type    string
+	 */
+	protected $ip_address = null;
+	
+// ----------------------------------------------------------------------------
+	
+	/**
+	 * Constructor
+	 */
+	public function construct() {
+		// Import super-globals
+		$this->post_data   = $_POST;
+		$this->get_data    = $_GET;
+		$this->server_data = $_SERVER;
+		$this->files_data  = $_FILES;
+		$this->cookie_data = $_COOKIE;
+		// Read the headers
+		if (function_exists('apache_request_headers')) {
+			$headers = apache_request_headers();
+		} else {
+			$headers = array(
+				'Content-Type' => ((isset($_SERVER['CONTENT_TYPE'])) ? $_SERVER['CONTENT_TYPE'] : @env('CONTENT_TYPE'))
+			);
+			foreach ($this->server_data as $key => $value) {
+				if (substr($key, 0, 5) === 'HTTP_') {
+					$key = substr($key, 5);
+					$headers[$key] = $value;
+				}
+			}
+		}
+		// Parse A_HEADER to A-Header
+		$headers = array();
+		foreach ($headers as $key => $value) {
+			$key = str_replace('_', ' ', strtolower($key));
+			$key = str_replace(' ', '-', ucwords($key));
+			$headers[$key] = $value;
+		}
+		$this->headers_data = $headers;
+	}
+	
+	/**
+	 * Read the user agent string
+	 *
+	 * @access  public
+	 * @return  string
+	 */
+	public function user_agent() {
+		if ($this->user_agent === null) {
+			$this->user_agent = $this->headers('User-Agent');
+		}
+		
+		return $this->user_agent;
+	}
+	
+	/**
+	 * Read the IP address
+	 *
+	 * @access  public
+	 * @return  string
+	 */
+	public function ip_address($default = false) {
+		if ($this->ip_address === null) {
+			// Try to find the client IP address
+			if ($this->server('REMOTE_ADDR') && $this->server('HTTP_CLIENT_IP')) {
+				$this->ip_address = $this->server('HTTP_CLIENT_IP');
+			} elseif ($this->server('REMOTE_ADDR')) {
+				$this->ip_address = $this->server('REMOTE_ADDR');
+			} elseif ($this->server('HTTP_CLIENT_IP')) {
+				$this->ip_address = $this->server('HTTP_CLIENT_IP');
+			} elseif ($this->server('HTTP_X_FORWARDED_FOR')) {
+				$this->ip_address = $this->server('HTTP_X_FORWARDED_FOR');
+			}
+			
+			// If no IP could be found, default to FALSE
+			if (! $this->ip_address) {
+				$this->ip_address = false;
+			}
+			
+			// If a list was given, select the last one
+			elseif (strpos($this->ip_address, ',') !== false) {
+				$ip = explode(',', $this->ip_address);
+				$this->ip_address = trim(end($ip));
+			}
+			
+			// Check the IP's validity
+			if (! $this->is_ip_address($this->ip_address)) {
+				$this->ip_address = false;
+			}
+		}
+		
+		return (($this->ip_address === false) ? $default : $this->ip_address);
+	}
+	
+	/**
+	 * Checks if an IP address is valid
+	 *
+	 * @access  public
+	 * @param   string    the ip to test
+	 * @return  bool
+	 */
+	public function is_ip_address($ip) {
+		if (! is_string($ip)) {
+			return false;
+		}
+	
+		$ip = explode('.', $ip);
+
+		// Check the basic form
+		if (count($ip) != 4 || $ip[0][0] == '0') {
+			return false;
+		}
+		
+		// Check individual segment values
+		foreach ($ip as $seg) {
+			if ($seg == '' || preg_match("/[^0-9]/", $seg) || $seg > 255 || strlen($seg) > 3) {
 				return false;
 			}
-		} else {
-			return $arr;
 		}
+
+		return true;
 	}
 	
 	/**
@@ -198,7 +287,7 @@ class Input_library {
 	 * @return  mixed
 	 */
 	public function determine_encoding($allow_deflate = false) {
-		import_library('compression');
+		import('compression');
 		if ($this->encoding === null) {
 			if (function_exists('gzencode')) {
 				$encoding = explode(',', $this->header('Accept-Encoding'));
@@ -215,6 +304,30 @@ class Input_library {
 			}
 		}
 		return $this->encoding;
+	}
+
+// ----------------------------------------------------------------------------
+	
+	/**
+	 * Reads from a *_data array
+	 *
+	 * @access  protected
+	 * @param   string    the array to read
+	 * @param   string    the item to read
+	 * @return  mixed
+	 */
+	protected function read_data($arr, $item = null) {
+		$arr = $arr.'_data';
+		$arr = $this->$arr;
+		if ($item) {
+			if (array_key_exists($item, $arr)) {
+				return $arr[$item];
+			} else {
+				return false;
+			}
+		} else {
+			return $arr;
+		}
 	}
 
 }
