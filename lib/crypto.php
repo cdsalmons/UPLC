@@ -121,9 +121,9 @@ class Crypto_library extends Uplc_library {
 		$key = $this->enc_key($key);
 		
 		if ($this->mcrypt) {
-			$this->mcrypt_encode($str, $key);
+			$str = $this->mcrypt_encode($str, $key);
 		} else {
-			
+			$str = $this->xor_encode($str, $key);
 		}
 		
 		return base64_encode($str);
@@ -147,9 +147,7 @@ class Crypto_library extends Uplc_library {
 		$dec = base64_decode($str);
 
 		if ($this->mcrypt) {
-			if (($dec = $this->mcrypt_decode($dec, $key)) === false) {
-				return false;
-			}
+			$dec = $this->mcrypt_decode($dec, $key);
 		} else {
 			$dec = $this->xor_decode($dec, $key);
 		}
