@@ -52,11 +52,12 @@ require_once 'uplc/init.php';
 /**
  * Import the libraries we want
  */
-import_libs(
+import(
     'input',
     'typehint',
     'output',
-    'git'
+    'git',
+    'datetime'
 );
 
 /**
@@ -86,6 +87,16 @@ Output()->set_status(404);
  */
 $repo = Git()->open('/path/to/repo');
 $repo->commit('This is a commit message...');
+
+/**
+ * Run a timer (datetime library)
+ */
+$timer = Datetime()->get_timer();
+$timer->start();
+for ($i = 0; $i < 100000; $i++) {
+    do_something();
+}
+echo 'Running do_something() took '.$timer->get_time().' seconds';
 
 /* End of examples */</code></pre>
 

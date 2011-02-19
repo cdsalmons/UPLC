@@ -15,13 +15,13 @@ class Session_library extends Uplc_library {
 	const SESSION_COOKIE = 'UPLCSESS';
 	
 	/**
-	 * The value that seperates cookie segments
+	 * Placeholder for serialized slashes
 	 *
-	 * @const   COOKIE_SEP
+	 * @const   SLASH_HOLDER
 	 * @access  public
 	 * @type    string
 	 */
-	const COOKIE_SEP = '|';
+	const SLASH_HOLDER = '{{slash}}';
 	
 	/**
 	 * Config data
@@ -250,25 +250,43 @@ class Session_library extends Uplc_library {
 			return false;
 		}
 		
-		// Parse the cookie
-		$cookie = explode(self::COOKIE_SEP, $cookie);
-		if (count($cookie) != 2) {
+		// Decrypt the cookie
+		$cookie = Crypto()->decrypt($cookie, $this->conf->get('encryption_key'));
+		$cookie = $this->unserialize($cookie);
+		
+		// Seperate out the hash (last 32 characters)
+		$len = strlen($cookie);
+		$hash = substr($cookie, $len - 32);
+		$cookie = substr($cookie, 0, $len - 32);
+		
+		// Check the hash for validity
+		if ($this->hash($cookie) != $hash) {
 			return false;
 		}
 		
-		// Decrypt the cookie
-		if ($this->hash_string($cookie[0]) != $cookie[1]) {
+		// Check for a valid cookie structure
+		if (! (is_array($cookie) && isset($cookie['sess_id']) && isset($cookie['user_agent'])
+		&& isset($cookie['ip_address']) && isset($cookie['last_active']))) {
+			return false;
+		}
+		
+		// Store the session data
+		$this->sess_id = $cookie['sess_id'];
+		$this->session_data = $cookie;
+		
+		// Check for a useragent match
+		$user_agent = substr(Input()->user_agent(), 0, 50);
+		if (trim($cookie['user_agent']) != trim($user_agent)) {
+			return false;
+		}
+		
+		// Check for expiration
+		if (($cookie['last_active'] + $this->conf->get('expiration')) < $this->now) {
 			return false;
 		}
 		
 		// Fetch session data from the database
-		if (! $this->read_db($cookie[0])) {
-			return false;
-		}
-		
-		// Check for a useragent match
-		$user_agent = substr(Input()->user_agent(), 0, 50);
-		if (trim($this->session_data['user_agent']) != trim($user_agent)) {
+		if (! $this->read_db()) {
 			return false;
 		}
 	}
@@ -286,7 +304,7 @@ class Session_library extends Uplc_library {
 			$this->conf->get('encryption_key'), false, mt_rand(8000, 12000)
 		);
 		
-		// Store data
+		// Store data in $this
 		$this->sess_id = $sessid;
 		$this->session_data = array(
 			'sess_id' => $sessid,
@@ -295,6 +313,12 @@ class Session_library extends Uplc_library {
 			'last_active' => $this->now,
 			'user_data' => array()
 		);
+		
+		// Write to the database
+		$this->write_db();
+		
+		// Write the cookie
+		$this->write_cookie();
 	}
 	
 	/**
@@ -304,8 +328,14 @@ class Session_library extends Uplc_library {
 	 * @return  void
 	 */
 	protected function destroy_session() {
-		
+		$this->delete_cookie();
+		$this->delete_db();
+		$this->session_data = null;
+		$this->sess_id = null;
 	}
+	
+// ----------------------------------------------------------------------------
+//   Cookie I/O Methods
 	
 	/**
 	 * Reads a stored session cookie
@@ -314,7 +344,7 @@ class Session_library extends Uplc_library {
 	 * @return  string
 	 */
 	protected function read_cookie() {
-		return Cookies()->get(self::SESSION_COOKIE);;
+		return Cookies()->get(self::SESSION_COOKIE);
 	}
 	
 	/**
@@ -325,11 +355,91 @@ class Session_library extends Uplc_library {
 	 */
 	protected function generate_cookie() {
 		if ($this->is_active()) {
-			return Crypto()->encrypt($this->serialize($this->session_data), $this->conf->get('encryption_key'));
+			// Get a session data array
+			$session_data = $this->session_data;
+			unset($session_data['user_data']);
+			// Serialize the array and add a hash
+			$session_data = $this->serialize($session_data);
+			$cookie = $session_data.$this->hash($session_data);
+			// Encrypt the cookie
+			return Crypto()->encrypt($cookie, $this->conf->get('encryption_key'));
 		}
 		
 		return false;
 	}
+	
+	/**
+	 * Writes a session cookie
+	 *
+	 * @access  protected
+	 * @return  void
+	 */
+	protected function write_cookie() {
+		if ($cookie = $this->generate_cookie()) {
+			Cookies()->set(self::SESSION_COOKIE, $cookie, $this->conf->get('expiration'));
+		}
+	}
+	
+	/**
+	 * Delete the session cookie
+	 *
+	 * @access  protected
+	 * @return  void
+	 */
+	protected function delete_cookie() {
+		Cookies()->delete(self::SESSION_COOKIE);
+	}
+	
+// ----------------------------------------------------------------------------
+//   Database I/O Methods
+	
+	/**
+	 * Reads the session data from the database
+	 *
+	 * @access  protected
+	 * @return  void
+	 */
+	protected function read_db() {
+		if ($this->is_active()) {
+			
+		}
+	}
+	
+	/**
+	 * Writes the session data to the database
+	 *
+	 * @access  protected
+	 * @return  void
+	 */
+	protected function write_db() {
+		if ($this->is_active()) {
+			// Get the data to write
+			$session_data = $this->session_data;
+			$session_data['user_data'] = $this->serialize($session_data['user_data']);
+			// Update if it already exists, otherwise insert
+			if ($this->read_db()) {
+				$this->db->update($this->db_table, $session_data, array('sess_id' => $this->sess_id));
+			} else {
+				$this->db->insert($this->db_table, $session_data);
+			}
+		}
+	}
+	
+	/**
+	 * Deletes session data from the database
+	 *
+	 * @access  protected
+	 * @return  void
+	 */
+	protected function delete_db() {
+		if ($this->is_active()) {
+			$sessid = $this->session_data['sess_id'];
+			$this->db->delete($this->db_table, array('sess_id' => $sessid));
+		}
+	}
+	
+// ----------------------------------------------------------------------------
+//   String Manipulation Functions
 	
 	/**
 	 * Serializes a variable into a storeable string.
@@ -342,12 +452,12 @@ class Session_library extends Uplc_library {
 		if (is_array($data)) {
 			foreach ($data as $key => $val) {
 				if (is_string($val)) {
-					$data[$key] = str_replace('\\', '{{slash}}', $val);
+					$data[$key] = str_replace('\\', self::SLASH_HOLDER, $val);
 				}
 			}
 		} else {
 			if (is_string($data)) {
-				$data = str_replace('\\', '{{slash}}', $data);
+				$data = str_replace('\\', self::SLASH_HOLDER, $data);
 			}
 		}
 
@@ -367,14 +477,14 @@ class Session_library extends Uplc_library {
 		if (is_array($data)) {
 			foreach ($data as $key => $val) {
 				if (is_string($val)) {
-					$data[$key] = str_replace('{{slash}}', '\\', $val);
+					$data[$key] = str_replace(self::SLASH_HOLDER, '\\', $val);
 				}
 			}
 
 			return $data;
 		}
 
-		return (is_string($data)) ? str_replace('{{slash}}', '\\', $data) : $data;
+		return (is_string($data)) ? str_replace(self::SLASH_HOLDER, '\\', $data) : $data;
 	}
 	
 	/**
@@ -396,37 +506,7 @@ class Session_library extends Uplc_library {
 			$subkey1 = $subkey2 = $key;
 		}
 		$str = $subkey1.'K'.$str.'K'.$subkey2;
-		return Hashing()->shash_hmac($str, $key, $seed);
-	}
-	
-	/**
-	 * Writes a session cookie
-	 *
-	 * @access  protected
-	 * @return  void
-	 */
-	protected function write_cookie() {
-		Cookies()->set(self::SESSION_COOKIE, $this->generate_cookie(), $this->conf->get('expiration'));
-	}
-	
-	/**
-	 * Reads the session data from the database
-	 *
-	 * @access  protected
-	 * @return  void
-	 */
-	protected function read_db() {
-	
-	}
-	
-	/**
-	 * Writes the session data to the database
-	 *
-	 * @access  protected
-	 * @return  void
-	 */
-	protected function write_db() {
-		
+		return Hashing()->hash_hmac($str, 'md5', $key);
 	}
 	
 }

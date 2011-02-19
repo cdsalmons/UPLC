@@ -43,21 +43,6 @@ $config['encryption_key'] = 'Your unique key goes here.';
 
 /*
 |------------------------------------------------
-| Hashing seed
-|------------------------------------------------
-|
-| An integer seed used during hashing. The larger the seed, the longer
-| the hash will take. You should select a seed between 0-30000, although
-| any integer value will work.
-|
-| NOTE: Changing this value will invalidate all previous hashes, meaning
-| that all sessions will immediately expire.
-|
-*/
-$config['hashing_seed'] = 12345;
-
-/*
-|------------------------------------------------
 | Session expiration
 |------------------------------------------------
 |
