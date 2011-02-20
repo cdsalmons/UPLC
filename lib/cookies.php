@@ -30,7 +30,7 @@ class Cookies_library extends Uplc_library {
 		// Get the expiration timestamp
 		if ($expire < 0) {
 			$expire = time() - 86500;
-		} else {
+		} elseif ($expire > 0) {
 			$expire = time() + $expire;
 		}
 		

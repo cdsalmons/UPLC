@@ -20,7 +20,7 @@ interface Database_scheme_iface {
 	public function select_db     ($db_name);
 	public function list_dbs      ();
 	public function list_tables   ($database = null);
-	public function table_exists  ($database = null);
+	public function table_exists  ($table, $database = null);
 	
 	public function query         ($query);
 	public function run_query     ($query);
@@ -234,6 +234,7 @@ abstract class Database_scheme implements Database_scheme_iface {
 			$keys[] = $this->quote_ident($key);
 			$values[] = $this->quote_string($value);
 		}
+		
 		$query .= implode(', ', $keys).") VALUES (".implode(', ', $values).")";
 		
 		// Run the query
@@ -359,7 +360,7 @@ abstract class Database_scheme implements Database_scheme_iface {
 		if ($if_not_exists) {
 			$query .= 'IF NOT EXISTS ';
 		}
-		$query .= '( ';
+		$query .= $this->quote_ident($table).' ( ';
 		
 		if (! is_array($definition)) {
 			return false;
@@ -383,15 +384,15 @@ abstract class Database_scheme implements Database_scheme_iface {
 				return false;
 			}
 			$item .= ' '.$desc['type'];
+			// Add the unsigned flag
+			if ($desc['unsigned']) {
+				$item .= ' unsigned';
+			}
 			// Add NULL/NOT NULL
 			if (! $desc['null']) {
 				$item .= ' NOT';
 			}
 			$item .= ' NULL';
-			// Add the unsigned flag
-			if ($desc['unsigned']) {
-				$item .= ' UNSIGNED';
-			}
 			// Add the auto_increment flag
 			if ($desc['auto_increment']) {
 				$item .= ' AUTO_INCREMENT';
@@ -424,7 +425,7 @@ abstract class Database_scheme implements Database_scheme_iface {
 		// Finish building the query
 		$query .= implode(', ', $items).' )';
 		if (isset($other['engine'])) {
-			$query .= ' ENGINE='.$engine;
+			$query .= ' ENGINE='.$other['engine'];
 		}
 		
 		return $this->query($query);
@@ -521,7 +522,7 @@ abstract class Database_scheme implements Database_scheme_iface {
 			$table = $table[1];
 		}
 		// Check if the table exists
-		$tables = list_tables($table, $database);
+		$tables = $this->list_tables($database);
 		return in_array($table, $tables);
 	}
 	

@@ -151,7 +151,7 @@ class Database_select {
 	protected function build_where_segment($values, $delim) {
 		$where = array();
 		foreach ($values as $i => $value) {
-			$where[] = sprintf("%s=%s", $i, $value);
+			$where[] = sprintf("%s=%s", $this->db->quote_ident($i), $this->db->quote_string($value));
 		}
 		return '('.implode(' '.$delim.' ', $where).')';
 	}
@@ -212,12 +212,16 @@ class Database_select {
 			}
 		}
 		$query = implode(' ', $query);
+		
+		// Run the query and process into an array
 		$result = $this->db->query($query);
 		if (is_resource($result)) {
 			$table = $this->db->build_table($result);
 			$this->db->free_result($result);
 			return $table;
 		}
+		
+		return $result;
 	}
 	
 }

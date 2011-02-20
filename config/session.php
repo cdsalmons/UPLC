@@ -53,6 +53,16 @@ $config['expiration'] = 7200;
 
 /*
 |------------------------------------------------
+| Session ID regeneration rate
+|------------------------------------------------
+|
+| How many seconds should be allowed to pass between session updates?
+|
+*/
+$config['regeneration'] = 300;
+
+/*
+|------------------------------------------------
 | Expiration on window close
 |------------------------------------------------
 |

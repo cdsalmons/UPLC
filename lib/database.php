@@ -175,7 +175,7 @@ function &Database($connection = null) {
 	if (! $inst) {
 		$inst = new Database_library();
 	}
-	if (is_string($connection)) {
+	if (is_string($connection) || is_int($connection)) {
 		if (preg_match('/^[a-zA-Z0-9_-]+$/', $connection)) {
 			return $inst->get_connection($connection);
 		} else {

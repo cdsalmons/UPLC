@@ -95,7 +95,9 @@ class Session_library extends Uplc_library {
 		
 		// Start a session if the table exists
 		if ($this->db->table_exists($this->db_table)) {
-			if (! $this->read_session()) {
+			if ($this->read_session()) {
+				$this->regenerate_sessid();
+			} else {
 				$this->destroy_session();
 				$this->create_session();
 			}
@@ -134,7 +136,8 @@ class Session_library extends Uplc_library {
 	 * @return  void
 	 */
 	public function set_item($item, $value) {
-	
+		$this->session_data[$item] = $value;
+		$this->write_db();
 	}
 	
 	/**
@@ -145,7 +148,7 @@ class Session_library extends Uplc_library {
 	 * @return  mixed
 	 */
 	public function get_item($item) {
-	
+		return ((isset($this->session_data[$item])) ? $this->session_data[$item] : null);
 	}
 	
 	/**
@@ -166,7 +169,8 @@ class Session_library extends Uplc_library {
 	 * @return  void
 	 */
 	public function unset_item($item) {
-		
+		unset($this->session_data[$item]);
+		$this->write_db();
 	}
 	
 // ----------------------------------------------------------------------------
@@ -209,7 +213,8 @@ class Session_library extends Uplc_library {
 		);
 		
 		$other = array(
-			'primary' => 'sess_id'
+			'primary' => 'sess_id',
+			'engine' => 'InnoDB'
 		);
 		
 		return $this->db->create_table($this->db_table, $table_def, $other, true);
@@ -239,6 +244,56 @@ class Session_library extends Uplc_library {
 //   Low-level Internal Session Control
 	
 	/**
+	 * Create a new session ID
+	 *
+	 * @access  protected
+	 * @return  string
+	 */
+	protected function generate_sessid() {
+		$sessid = mt_rand(0, mt_getrandmax()).Input()->ip_address('0.0.0.0');
+		$sessid = Hashing()->shash_hmac(uniqid($sessid, true),
+			$this->conf->get('encryption_key'), false, mt_rand(8000, 12000)
+		);
+		return $sessid;
+	}
+	
+	/**
+	 * Should the session ID be regenerated?
+	 *
+	 * @access  protected
+	 * @return  bool
+	 */
+	protected function should_regenerate() {
+		$last_active = $this->session_data['last_active'];
+		return (($last_active + $this->conf->get('regeneration')) < $this->now);
+	}
+	
+	/**
+	 * Create a new session ID for the session
+	 *
+	 * @access  protected
+	 * @return  void
+	 */
+	protected function regenerate_sessid() {
+		if ($this->is_active() && $this->should_regenerate()) {
+			$old_sessid = $this->sess_id;
+			$new_sessid = $this->generate_sessid();
+			// Replace session IDs in this object
+			$this->sess_id = $this->session_data['sess_id'] = $new_sessid;
+			$this->last_active = $this->now;
+			// Update the database
+			$this->db->update($this->db_table, array(
+				'sess_id' => $new_sessid,
+				'last_active' => $this->session_data['last_active'],
+				'user_agent' => $this->session_data['user_agent'],
+				'ip_address' => $this->session_data['ip_address']
+			), array('sess_id' => $old_sessid));
+			// Build and set the new cookie
+			$this->write_cookie();
+		}
+	}
+	
+	/**
 	 * Reads and loads a session
 	 *
 	 * @access  protected
@@ -252,7 +307,6 @@ class Session_library extends Uplc_library {
 		
 		// Decrypt the cookie
 		$cookie = Crypto()->decrypt($cookie, $this->conf->get('encryption_key'));
-		$cookie = $this->unserialize($cookie);
 		
 		// Seperate out the hash (last 32 characters)
 		$len = strlen($cookie);
@@ -260,19 +314,18 @@ class Session_library extends Uplc_library {
 		$cookie = substr($cookie, 0, $len - 32);
 		
 		// Check the hash for validity
-		if ($this->hash($cookie) != $hash) {
+		if ($this->hash_string($cookie) != $hash) {
 			return false;
 		}
+		
+		// Unserialize the cookie data back into an array
+		$cookie = $this->unserialize($cookie);
 		
 		// Check for a valid cookie structure
 		if (! (is_array($cookie) && isset($cookie['sess_id']) && isset($cookie['user_agent'])
 		&& isset($cookie['ip_address']) && isset($cookie['last_active']))) {
 			return false;
 		}
-		
-		// Store the session data
-		$this->sess_id = $cookie['sess_id'];
-		$this->session_data = $cookie;
 		
 		// Check for a useragent match
 		$user_agent = substr(Input()->user_agent(), 0, 50);
@@ -285,10 +338,36 @@ class Session_library extends Uplc_library {
 			return false;
 		}
 		
+		// Update some info
+		$session = $cookie;
+		$session['ip_address'] = Input()->ip_address('0.0.0.0');
+		$session['user_agent'] = substr(Input()->user_agent(), 0, 50);
+		
 		// Fetch session data from the database
-		if (! $this->read_db()) {
+		$db_data = $this->db
+			->select('*')
+			->from($this->db_table)
+			->where(array(
+				'sess_id' => $session['sess_id']
+			))
+			->get();
+		
+		// Make sure there was a database row
+		if (count($db_data) == 0) {
 			return false;
 		}
+		
+		// Add user data to the session array
+		$user_data = $this->unserialize($db_data[0]['user_data']);
+		foreach ($user_data as $key => $value) {
+			$session[$key] = $value;
+		}
+		
+		// Store data in the local object
+		$this->sess_id = $session['sess_id'];
+		$this->session_data = $session;
+		
+		return true;
 	}
 	
 	/**
@@ -299,10 +378,7 @@ class Session_library extends Uplc_library {
 	 */
 	protected function create_session() {
 		// Generate the session ID
-		$sessid = mt_rand(0, mt_getrandmax()).Input()->ip_address('0.0.0.0');
-		$sessid = Hashing()->shash_hmac(uniqid($sessid, true),
-			$this->conf->get('encryption_key'), false, mt_rand(8000, 12000)
-		);
+		$sessid = $this->generate_sessid();
 		
 		// Store data in $this
 		$this->sess_id = $sessid;
@@ -315,7 +391,7 @@ class Session_library extends Uplc_library {
 		);
 		
 		// Write to the database
-		$this->write_db();
+		$this->write_db(true);
 		
 		// Write the cookie
 		$this->write_cookie();
@@ -356,11 +432,13 @@ class Session_library extends Uplc_library {
 	protected function generate_cookie() {
 		if ($this->is_active()) {
 			// Get a session data array
-			$session_data = $this->session_data;
-			unset($session_data['user_data']);
+			$session_data = array();
+			foreach (array('sess_id', 'user_agent', 'ip_address', 'last_active') as $key) {
+				$session_data[$key] = $this->session_data[$key];
+			}
 			// Serialize the array and add a hash
 			$session_data = $this->serialize($session_data);
-			$cookie = $session_data.$this->hash($session_data);
+			$cookie = $session_data.$this->hash_string($session_data);
 			// Encrypt the cookie
 			return Crypto()->encrypt($cookie, $this->conf->get('encryption_key'));
 		}
@@ -376,7 +454,8 @@ class Session_library extends Uplc_library {
 	 */
 	protected function write_cookie() {
 		if ($cookie = $this->generate_cookie()) {
-			Cookies()->set(self::SESSION_COOKIE, $cookie, $this->conf->get('expiration'));
+			$expire = ($this->conf->get('expire_on_close')) ? 0 : $this->conf->get('expiration');
+			Cookies()->set(self::SESSION_COOKIE, $cookie, $expire);
 		}
 	}
 	
@@ -393,34 +472,31 @@ class Session_library extends Uplc_library {
 // ----------------------------------------------------------------------------
 //   Database I/O Methods
 	
-	/**
-	 * Reads the session data from the database
-	 *
-	 * @access  protected
-	 * @return  void
-	 */
-	protected function read_db() {
-		if ($this->is_active()) {
-			
-		}
-	}
 	
 	/**
 	 * Writes the session data to the database
 	 *
 	 * @access  protected
+	 * @param   bool      is it a new session?
 	 * @return  void
 	 */
-	protected function write_db() {
+	protected function write_db($is_new = false) {
 		if ($this->is_active()) {
-			// Get the data to write
-			$session_data = $this->session_data;
-			$session_data['user_data'] = $this->serialize($session_data['user_data']);
-			// Update if it already exists, otherwise insert
-			if ($this->read_db()) {
-				$this->db->update($this->db_table, $session_data, array('sess_id' => $this->sess_id));
-			} else {
+			if ($is_new) {
+				$session_data = $this->session_data;
+				$session_data['user_data'] = $this->serialize(array());
 				$this->db->insert($this->db_table, $session_data);
+			} else {
+				$user_data = array();
+				$dont_copy = array('sess_id', 'user_agent', 'ip_address', 'last_active');
+				foreach ($this->session_data as $key => $value) {
+					if (! in_array($key, $dont_copy)) {
+						$user_data[$key] = $value;
+					}
+				}
+				$this->db->update($this->db_table, array(
+					'user_data' => $this->serialize($user_data)
+				), array('sess_id' => $this->sess_id));
 			}
 		}
 	}
@@ -433,8 +509,7 @@ class Session_library extends Uplc_library {
 	 */
 	protected function delete_db() {
 		if ($this->is_active()) {
-			$sessid = $this->session_data['sess_id'];
-			$this->db->delete($this->db_table, array('sess_id' => $sessid));
+			return $this->db->delete($this->db_table, array('sess_id' => $this->sess_id));
 		}
 	}
 	
@@ -472,7 +547,7 @@ class Session_library extends Uplc_library {
 	 * @return  mixed
 	 */
 	protected function unserialize($data) {
-		$data = @unserialize(strip_slashes($data));
+		$data = unserialize(stripslashes($data));
 
 		if (is_array($data)) {
 			foreach ($data as $key => $val) {

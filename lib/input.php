@@ -91,21 +91,16 @@ class Input_library extends Uplc_library {
 			$headers = apache_request_headers();
 		} else {
 			$headers = array(
-				'Content-Type' => ((isset($_SERVER['CONTENT_TYPE'])) ? $_SERVER['CONTENT_TYPE'] : @env('CONTENT_TYPE'))
+				'Content-Type' => ((isset($_SERVER['CONTENT_TYPE'])) ? $_SERVER['CONTENT_TYPE'] : @getenv('CONTENT_TYPE'))
 			);
 			foreach ($this->server_data as $key => $value) {
 				if (substr($key, 0, 5) === 'HTTP_') {
 					$key = substr($key, 5);
+					$key = str_replace('_', ' ', strtolower($key));
+					$key = str_replace(' ', '-', ucwords($key));
 					$headers[$key] = $value;
 				}
 			}
-		}
-		// Parse A_HEADER to A-Header
-		$headers = array();
-		foreach ($headers as $key => $value) {
-			$key = str_replace('_', ' ', strtolower($key));
-			$key = str_replace(' ', '-', ucwords($key));
-			$headers[$key] = $value;
 		}
 		$this->headers_data = $headers;
 	}
@@ -277,6 +272,42 @@ class Input_library extends Uplc_library {
 	 */
 	public function headers($item = null) {
 		return $this->read_data('headers', $item);
+	}
+	
+	/**
+	 * Reads the path info
+	 *
+	 * @access  public
+	 * @return  string
+	 */
+	public function path_info() {
+		if ($this->uri_string === null) {
+			$path_info        = $this->server('PATH_INFO');
+			$orig_path_info   = $this->server('ORIG_PATH_INFO');
+			$path_info        = ($path_info) ? $path_info : '';
+			$orig_path_info   = ($orig_path_info) ? $orig_path_info : '';
+			$this->uri_string = (strlen($path_info) < strlen($orig_path_info)) ? $orig_path_info : $path_info;
+		}
+		return $this->uri_string;
+	}
+	
+	/**
+	 * Reads path info segments as /seg1/seg2
+	 *
+	 * @access  public
+	 * @param   int       the segment to read
+	 * @return  string
+	 */
+	public function path_info_segment($seg = null) {
+		if ($this->uri_array === null) {
+			$uri = $this->uri();
+			$this->uri_array = explode('/', $uri);
+		}
+		if (is_int($seg)) {
+			return ((isset($this->uri_array[$seg])) ? $this->uri_array[$seg] : false);
+		} else {
+			return $this->uri_array;
+		}
 	}
 	
 	/**
